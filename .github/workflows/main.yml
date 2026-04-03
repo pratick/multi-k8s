@@ -5,9 +5,6 @@ on:
     branches:
       - main
 
-env:
-  CLOUDSDK_CORE_DISABLE_PROMPTS: 1
-
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -20,24 +17,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Setup gcloud + kubectl
-      - name: Setup gcloud and kubectl
-        uses: google-github-actions/setup-gcloud@v1
+      # 2️⃣ Setup gcloud + GKE auth plugin
+      - name: Setup gcloud + GKE plugin
+        uses: google-github-actions/setup-gcloud@v3
         with:
           project_id: multi-k8s-492102
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           export_default_credentials: true
+          install_components: gke-gcloud-auth-plugin
 
-      # Ensure kubectl is installed (ubuntu-latest usually has it)
-      - name: Install kubectl if missing
-        run: |
-          if ! command -v kubectl &> /dev/null; then
-            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-            chmod +x kubectl
-            sudo mv kubectl /usr/local/bin/
-          fi
-
-      # 3️⃣ Authenticate Docker to push
+      # 3️⃣ Authenticate Docker
       - name: Docker login
         uses: docker/login-action@v2
         with:
@@ -67,9 +56,9 @@ jobs:
           docker push pratickb/multi-worker:latest
           docker push pratickb/multi-worker:$SHA
 
-      # 7️⃣ Get GKE credentials
+      # 7️⃣ Get GKE credentials (v2, supports service_account_key)
       - name: Get GKE credentials
-        uses: google-github-actions/get-gke-credentials@v1
+        uses: google-github-actions/get-gke-credentials@v2
         with:
           cluster_name: multi-k8s
           location: us-central1
