@@ -67,7 +67,7 @@ jobs:
       # 8️⃣ Deploy to Kubernetes
       - name: Configure kubectl
         run: |
-          gcloud container clusters get-credentials multi-cluster --zone us-central1-a --project multi-k8s-492102
+          gcloud container clusters get-credentials multi-k8s --zone us-central1 --project multi-k8s-492102
 
       - name: Apply k8s manifests
         run: kubectl apply -f k8s
