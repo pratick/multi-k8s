@@ -41,16 +41,18 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      # 6️⃣ Run client tests
+      - name: Run client tests
+        run: |
+          docker build -t pratickb/multi-client-test -f ./client/Dockerfile.dev ./client
+          docker run -e CI=true pratickb/multi-client-test npm test 
+      
       # 5️⃣ Build Docker images
       - name: Build Docker images
         run: |
           docker build -t pratickb/multi-client:latest -t pratickb/multi-client:$SHA -f ./client/Dockerfile ./client
           docker build -t pratickb/multi-server:latest -t pratickb/multi-server:$SHA -f ./server/Dockerfile ./server
           docker build -t pratickb/multi-worker:latest -t pratickb/multi-worker:$SHA -f ./worker/Dockerfile ./worker
-
-      # 6️⃣ Run client tests
-      - name: Run client tests
-        run: docker run -e CI=true pratickb/multi-client:latest npm test
 
       # 7️⃣ Push Docker images
       - name: Push Docker images
