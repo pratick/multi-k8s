@@ -3,7 +3,7 @@ name: CI/CD Pipeline
 on:
   push:
     branches:
-      - main   # or master if you use that
+      - main
 
 env:
   CLOUDSDK_CORE_DISABLE_PROMPTS: 1
@@ -20,19 +20,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Decrypt service account
-      - name: Decrypt service account
-        run: |
-          openssl aes-256-cbc -K ${{ secrets.ENCRYPTION_KEY }} -iv ${{ secrets.ENCRYPTION_IV }} \
-          -in service-account.json.enc -out service-account.json -d
-
-      # 3️⃣ Install Google Cloud SDK
+      # 2️⃣ Install Google Cloud SDK
       - name: Install Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
         with:
-          project_id: multi-k8s-492102
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
           export_default_credentials: true
+
+      # 3️⃣ Decrypt service account and authenticate
+      - name: Authenticate with GCP
+        run: |
+          openssl aes-256-cbc -K ${{ secrets.ENCRYPTION_KEY }} -iv ${{ secrets.ENCRYPTION_IV }} \
+            -in service-account.json.enc -out service-account.json -d
+          gcloud auth activate-service-account --key-file=service-account.json
+          gcloud config set project multi-k8s-492102
 
       # 4️⃣ Authenticate Docker to push
       - name: Log in to DockerHub
@@ -41,18 +41,18 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 6️⃣ Run client tests
-      - name: Run client tests
-        run: |
-          docker build -t pratickb/multi-client-test -f ./client/Dockerfile.dev ./client
-          docker run -e CI=true pratickb/multi-client-test npm test 
-      
       # 5️⃣ Build Docker images
       - name: Build Docker images
         run: |
           docker build -t pratickb/multi-client:latest -t pratickb/multi-client:$SHA -f ./client/Dockerfile ./client
           docker build -t pratickb/multi-server:latest -t pratickb/multi-server:$SHA -f ./server/Dockerfile ./server
           docker build -t pratickb/multi-worker:latest -t pratickb/multi-worker:$SHA -f ./worker/Dockerfile ./worker
+
+      # 6️⃣ Run client tests
+      - name: Run client tests
+        run: |
+          docker build -t pratickb/multi-client-test -f ./client/Dockerfile.dev ./client
+          docker run -e CI=true pratickb/multi-client-test npm test 
 
       # 7️⃣ Push Docker images
       - name: Push Docker images
