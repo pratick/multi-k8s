@@ -19,43 +19,44 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Decrypt service account
-      - name: Decrypt service account
-        run: |
-          openssl aes-256-cbc -K ${{ secrets.ENCRYPTION_KEY }} \
-          -iv ${{ secrets.ENCRYPTION_IV }} \
-          -in service-account.json.enc -out service-account.json -d
+      # 2️⃣ Setup gcloud + kubectl
+      - name: Setup gcloud and kubectl
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: multi-k8s-492102
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
 
-      # 3️⃣ Install Google Cloud SDK + gke-gcloud-auth-plugin
-      - name: Setup gcloud + GKE plugin
+      # Ensure kubectl is installed (ubuntu-latest usually has it)
+      - name: Install kubectl if missing
         run: |
-          curl -sSL https://sdk.cloud.google.com | bash
-          source $HOME/google-cloud-sdk/path.bash.inc
-          gcloud components install gke-gcloud-auth-plugin -q
-          gcloud auth activate-service-account --key-file=service-account.json
-          gcloud config set project multi-k8s-492102
+          if ! command -v kubectl &> /dev/null; then
+            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+            chmod +x kubectl
+            sudo mv kubectl /usr/local/bin/
+          fi
 
-      # 4️⃣ Authenticate Docker to push
+      # 3️⃣ Authenticate Docker to push
       - name: Docker login
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 5️⃣ Run client tests
+      # 4️⃣ Run client tests
       - name: Run client tests
         run: |
           docker build -t pratickb/multi-client-test -f ./client/Dockerfile.dev ./client
-          docker run -e CI=true pratickb/multi-client-test npm test 
+          docker run -e CI=true pratickb/multi-client-test npm test
 
-      # 6️⃣ Build Docker images
+      # 5️⃣ Build Docker images
       - name: Build Docker images
         run: |
           docker build -t pratickb/multi-client:latest -t pratickb/multi-client:$SHA -f ./client/Dockerfile ./client
           docker build -t pratickb/multi-server:latest -t pratickb/multi-server:$SHA -f ./server/Dockerfile ./server
           docker build -t pratickb/multi-worker:latest -t pratickb/multi-worker:$SHA -f ./worker/Dockerfile ./worker
 
-      # 7️⃣ Push Docker images
+      # 6️⃣ Push Docker images
       - name: Push Docker images
         run: |
           docker push pratickb/multi-client:latest
@@ -65,18 +66,19 @@ jobs:
           docker push pratickb/multi-worker:latest
           docker push pratickb/multi-worker:$SHA
 
-      # 8️⃣ Get GKE credentials
+      # 7️⃣ Get GKE credentials
       - name: Get GKE credentials
-        run: |
-          gcloud container clusters get-credentials multi-k8s \
-            --zone us-central1 \
-            --project multi-k8s-492102
+        uses: google-github-actions/get-gke-credentials@v1
+        with:
+          cluster_name: multi-k8s
+          location: us-central1
+          project_id: multi-k8s-492102
 
-      # 9️⃣ Apply Kubernetes manifests
+      # 8️⃣ Apply Kubernetes manifests
       - name: Apply k8s manifests
         run: kubectl apply -f k8s
 
-      # 🔟 Update deployment images
+      # 9️⃣ Update deployment images
       - name: Update deployment images
         run: |
           kubectl set image deployments/server-deployment server=pratickb/multi-server:$SHA
