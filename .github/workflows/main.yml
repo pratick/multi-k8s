@@ -17,15 +17,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Setup gcloud + GKE auth plugin
-      - name: Setup gcloud + GKE plugin
-        uses: google-github-actions/setup-gcloud@v3
-        with:
-          project_id: multi-k8s-492102
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
-          export_default_credentials: true
-          install_components: gke-gcloud-auth-plugin
-
       # 3️⃣ Authenticate Docker
       - name: Docker login
         uses: docker/login-action@v2
@@ -56,14 +47,14 @@ jobs:
           docker push pratickb/multi-worker:latest
           docker push pratickb/multi-worker:$SHA
 
-      # 7️⃣ Get GKE credentials (v2, supports service_account_key)
-      - name: Get GKE credentials
-        uses: google-github-actions/get-gke-credentials@v2
+      # 2️⃣ Setup gcloud + GKE auth plugin
+      - name: Setup gcloud + GKE plugin
+        uses: google-github-actions/setup-gcloud@v3
         with:
-          cluster_name: multi-k8s
-          location: us-central1
           project_id: multi-k8s-492102
           service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
+          install_components: gke-gcloud-auth-plugin
 
       # 8️⃣ Apply Kubernetes manifests
       - name: Apply k8s manifests
