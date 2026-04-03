@@ -59,13 +59,14 @@ jobs:
           docker push pratickb/multi-server:$SHA
           docker push pratickb/multi-worker:$SHA
 
-      # 7️⃣ Get GKE credentials (installs plugin automatically)
+      # 7️⃣ Get GKE credentials (using decrypted service account)
       - name: Get GKE credentials
         uses: google-github-actions/get-gke-credentials@v1
         with:
           cluster_name: multi-k8s
           location: us-central1
           project_id: multi-k8s-492102
+          service_account_key: service-account.json
 
       # 8️⃣ Apply Kubernetes manifests
       - name: Apply k8s manifests
