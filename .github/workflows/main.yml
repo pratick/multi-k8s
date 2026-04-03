@@ -74,6 +74,7 @@ jobs:
           cluster_name: multi-k8s
           location: us-central1
           project_id: multi-k8s-492102
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
 
       # 8️⃣ Apply Kubernetes manifests
       - name: Apply k8s manifests
